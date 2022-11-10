@@ -56,6 +56,19 @@ After secret file `.env` has been configured, load it with `export 'cat .env' &&
 - In test/App.Test, run `dotnet test` to run unit tests
 
 
+### Workflow Piplines
+
+Docker file is created under root /Dockerfile which does a build and push to the configured registry container.
+For a sucessfull pipeline run, Once the dotnet repo is created add the below CI-CD pipeline variables for the Repository
+
+```
+         CONTAINER_REGISTRY_URL : conatiner-registry-url
+         CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
+			CONTAINER_REGISTRY_USER : conatiner-registry-user
+
+			PACKAGE_REGISTRY_USERNAME : Github-package-registry-user-where-commonisstored
+			PACKAGE_REGISTRY_PASSWORD: Github-package-registry-password
+```
 ### Grafana Display
 
 Once the NetObsStats Generator creates all the necessary data required for the Network Observability the grafana can be used for visualizations. The [grafana chart](./docs/grafana.json) can be used to for Network Observability visualizations which produces the below displays
