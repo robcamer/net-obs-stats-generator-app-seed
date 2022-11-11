@@ -1,0 +1,8 @@
+template: external-service
+deployments:
+  dev:
+    target: dev
+    clusters: 1
+    values:
+      image: myregistry.io/myimage:tag
+      port: 5000

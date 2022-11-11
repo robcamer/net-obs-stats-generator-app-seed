@@ -12,7 +12,7 @@ This is the overview list of steps when creating an app seed. All places that re
 4. Run step 2 again to ensure no more updates are left
 5. Remove this top section when done
 
-# TODO PROJECT_NAME App Seed
+# NetObsStatsGenerator App Seed
 
 This is an application seed that is part of the general Network Observability solution consisting of containerized .NET application development with cloud-native capabilities.
 
@@ -26,20 +26,60 @@ To get started with Coral, see the [platform setup instructions](https://github.
 
 ## Baseline Features
 
-The application seed contains (or will contain) the following cloud-native capabilities:
+The application seed contains the following cloud-native capabilities:
 
-1. Structured logging
 1. Performance metrics
-1. Distributed tracing
-1. Feature flags
-1. Data storage
-1. Inner loop using codespaces
-1. Init container
-1. Metadata for observability
+2. Init container
+3. Data Storage
+4. Metadata for observability
+
+## Goals
+
+The goal for the NetObsStatsGen container service is to create the  `PacketsView` SQL database view and the `Intervals` sql database table in order to support the SQL queries necessary to visualize Network Observability Statistics in Grafana.
 
 ## Network Observability Features
 
-Add details regarding this project as it relates to the overall Network Observability capability.
+NetObsStatsGenerator consumes the `EventMetadata` RabbitMq message which contains the `julianDay` field and uses this `julianDay` to extract the data from `PacketIndices` and `PcapMetaData` table to create the view `PacketsView` in the sql database.
+
+Below are snippets of the database records created.
+
+![PacketsView](./docs/PacketsView.png)
+
+![ReportIntervals](./docs/ReportIntervals.png)
+
+### Application Development
+
+After secret file `.env` has been configured, load it with `export 'cat .env' && bash`
+
+- In src/App, run `dotnet build` to build your app
+- In src/App, run `dotnet run` to run your app
+- In test/App.Test, run `dotnet test` to run unit tests
+
+
+### Workflow Piplines
+
+Docker file is created under root /Dockerfile which does a build and push to the configured registry container.
+For a sucessfull pipeline run, Once the dotnet repo is created add the below CI-CD pipeline variables for the Repository
+
+```bash
+CONTAINER_REGISTRY_URL : conatiner-registry-url
+CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
+CONTAINER_REGISTRY_USER : conatiner-registry-user
+
+PACKAGE_REGISTRY_USERNAME : Github-package-registry-user-where-commonisstored
+PACKAGE_REGISTRY_PASSWORD: Github-package-registry-password
+PACKAGE_REGISTRY_ORG_NAME: organization-name-for-the-package-registry
+
+```
+### Grafana Display
+
+Once the NetObsStats Generator creates all the necessary data required for the Network Observability the grafana can be used for visualizations. The [grafana chart](./docs/grafana.json) can be used to for Network Observability visualizations which produces the below displays
+
+![Grafana Display 1](./docs/Grafana1.png)
+
+![Grafana Display 2](./docs/Grafana2.png)
+
+![Grafana Display 3](./docs/Grafana3.png)
 
 ### Container Development
 
