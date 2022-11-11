@@ -61,13 +61,15 @@ After secret file `.env` has been configured, load it with `export 'cat .env' &&
 Docker file is created under root /Dockerfile which does a build and push to the configured registry container.
 For a sucessfull pipeline run, Once the dotnet repo is created add the below CI-CD pipeline variables for the Repository
 
-```
-         CONTAINER_REGISTRY_URL : conatiner-registry-url
-         CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
-			CONTAINER_REGISTRY_USER : conatiner-registry-user
+```bash
+CONTAINER_REGISTRY_URL : conatiner-registry-url
+CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
+CONTAINER_REGISTRY_USER : conatiner-registry-user
 
-			PACKAGE_REGISTRY_USERNAME : Github-package-registry-user-where-commonisstored
-			PACKAGE_REGISTRY_PASSWORD: Github-package-registry-password
+PACKAGE_REGISTRY_USERNAME : Github-package-registry-user-where-commonisstored
+PACKAGE_REGISTRY_PASSWORD: Github-package-registry-password
+PACKAGE_REGISTRY_ORG_NAME: organization-name-for-the-package-registry
+
 ```
 ### Grafana Display
 
