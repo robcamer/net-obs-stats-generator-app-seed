@@ -56,7 +56,7 @@ After secret file `.env` has been configured, load it with `export 'cat .env' &&
 - In test/App.Test, run `dotnet test` to run unit tests
 
 
-### Workflow Piplines
+### Workflow Piplines For GitHub
 
 Docker file is created under root /Dockerfile which does a build and push to the configured registry container.
 For a sucessfull pipeline run, Once the dotnet repo is created add the below CI-CD pipeline variables for the Repository
@@ -69,8 +69,40 @@ CONTAINER_REGISTRY_USER : conatiner-registry-user
 PACKAGE_REGISTRY_USERNAME : Github-package-registry-user-where-commonisstored
 PACKAGE_REGISTRY_PASSWORD: Github-package-registry-password
 PACKAGE_REGISTRY_ORG_NAME: organization-name-for-the-package-registry
+```
+
+### Workflow Piplines For GitLab
+
+- Clone the repo into GitLab
+- Create the below CICD variables
+
+```bash
+CONTAINER_REGISTRY_URL : conatiner-registry-url
+CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
+CONTAINER_REGISTRY_USER : conatiner-registry-user
 
 ```
+
+- Update the nuget.config files with the gitlab specific common library path , similar to below
+
+```bash
+<add key="gitlab" value="https://gitlab.com/api/v4/projects/---/index.json" /> 
+<gitlab>
+  <add key="Username" value="%GITLAB_PACKAGE_REGISTRY_USERNAME%" />
+  <add key="ClearTextPassword" value="%GITLAB_PACKAGE_REGISTRY_PASSWORD%" />
+</gitlab>
+
+```
+
+- Update the docker file to use these ARG variables 
+
+``` bash
+
+ARG GITLAB_PACKAGE_REGISTRY_USERNAME
+ARG GITLAB_PACKAGE_REGISTRY_PASSWORD
+
+```
+
 ### Grafana Display
 
 Once the NetObsStats Generator creates all the necessary data required for the Network Observability the grafana can be used for visualizations. The [grafana chart](./docs/grafana.json) can be used to for Network Observability visualizations which produces the below displays
