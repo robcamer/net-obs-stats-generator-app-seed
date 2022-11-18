@@ -73,7 +73,9 @@ PACKAGE_REGISTRY_ORG_NAME: organization-name-for-the-package-registry
 
 ### Workflow Piplines For GitLab
 
-- Clone the repo into GitLab
+- Create the necessary Common library packages using repo https://code.afcmade.com/devteam/cse/cse-efr-coral/templates/NetworkObservabilityUtilities
+- Create a GitLab Pipline Runner for the group if not already available. Refer to the steps to create a runner with the `efr` tag [here](https://dev.azure.com/CSECodeHub/CSE%20Gov%20-%20Mission%20Capabilities/_wiki/wikis/513266---EFR---Azure-Mission-Edge-Application-Platform.wiki/31862/GitLab-Runner-for-use-with-Coral-GitLab-pipelines)
+- Clone the App seed repo into GitLab
 - Create the below CICD variables
 
 ```bash
@@ -94,7 +96,7 @@ CONTAINER_REGISTRY_USER : conatiner-registry-user
 
 ```
 
-- Update the docker file to use these ARG variables 
+- Update the docker file to use these ARG variables
 
 ``` bash
 
