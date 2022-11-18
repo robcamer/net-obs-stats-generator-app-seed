@@ -1,17 +1,3 @@
-# TODO - Seed Creation Steps
-
-This is the overview list of steps when creating an app seed. All places that require modification has been marked with `TODO`. Here are the steps:
-
-1. Use this repo as a template in the new seed repo creation
-2. In project root directory, run `grep -nr "TODO" ./` to preview all files that require action
-3. Update projects to use the specific project info instead of placeholder, general items are
-   1. Add application files under `/App` and `/test/App.Test`
-   2. Update required secrets under `.env.example`
-   3. Update docs such as README, SUPPORT with service specific info
-   4. Update pipeline files `.gitlab-ci.yml` and `/github/github.action.yml` to build, test, and push on both platforms
-4. Run step 2 again to ensure no more updates are left
-5. Remove this top section when done
-
 # NetObsStatsGenerator App Seed
 
 This is an application seed that is part of the general Network Observability solution consisting of containerized .NET application development with cloud-native capabilities.
