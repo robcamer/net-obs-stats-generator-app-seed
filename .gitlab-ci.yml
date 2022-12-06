@@ -31,10 +31,14 @@ variables:
   CONTAINER_IMAGE_NAME: ${CI_PROJECT_NAME}
   GITLAB_PACKAGE_REGISTRY_USERNAME: gitlab-ci-token
   GITLAB_PACKAGE_REGISTRY_PASSWORD: $CI_JOB_TOKEN
+  NUGET_SOURCE_VALUE: $NUGET_SOURCE_VALUE
+  NUGET_PLATFORM_VALUE: $NUGET_PLATFORM_VALUE
 
 build-dotnet-seed:
   stage: build
   image: mcr.microsoft.com/dotnet/sdk:6.0-bullseye-slim
+  tags:
+    - efr
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -53,20 +57,25 @@ build-dotnet-seed:
 
 docker-build-and-push:
   stage: push
+  tags:
+    - efr
+  image: docker:19.03.12
   variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
     TAG_NAME: latest
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_DRIVER: overlay2
-  image: docker:18-git
   services:
-    - docker:18-dind
+    - docker:19.03.13-dind
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   script:
+    - lowerstr=$(echo $CONTAINER_IMAGE_NAME | tr '[:upper:]' '[:lower:]')
     - echo "===== Login to Container Registry ====="
     - echo ${CONTAINER_REGISTRY_ACCESS_TOKEN} | docker login ${CONTAINER_REGISTRY_URL} --username ${CONTAINER_REGISTRY_USER} --password-stdin
 
     - echo "===== Build and push ====="
-    - docker build -t ${CONTAINER_REGISTRY_URL}/${CONTAINER_IMAGE_NAME}:${TAG_NAME} . --build-arg GITLAB_PACKAGE_REGISTRY_USERNAME=$GITLAB_PACKAGE_REGISTRY_USERNAME --build-arg GITLAB_PACKAGE_REGISTRY_PASSWORD=$GITLAB_PACKAGE_REGISTRY_PASSWORD
-    - docker push ${CONTAINER_REGISTRY_URL}/${CONTAINER_IMAGE_NAME}
+    - docker build -t ${CONTAINER_REGISTRY_URL}/${lowerstr}:${TAG_NAME} . --build-arg GITLAB_PACKAGE_REGISTRY_USERNAME=$GITLAB_PACKAGE_REGISTRY_USERNAME --build-arg GITLAB_PACKAGE_REGISTRY_PASSWORD=$GITLAB_PACKAGE_REGISTRY_PASSWORD
+    - docker push ${CONTAINER_REGISTRY_URL}/${lowerstr}
