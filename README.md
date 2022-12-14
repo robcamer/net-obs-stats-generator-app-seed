@@ -73,6 +73,17 @@ PACKAGE_REGISTRY_PASSWORD | Y | password to authenticate to github / `ghp_xxxxxx
 NUGET_PLATFORM_URL | Y | platform URL to allow required common package imports / `https://<your_repo_domain>/api/v4/projects/<common_package_group_id>/nuget/index.json`
 NUGET_SOURCE_URL | Y | nuget source URL to allow required nuget owned package imports / `https://api.nuget.org/v3/index.json`
 
+### In local Dockerfile
+
+Make sure the dockerfile contains the following ARGs:
+
+```bash
+ARG GITHUB_PACKAGE_REGISTRY_USERNAME
+ARG GITHUB_PACKAGE_REGISTRY_PASSWORD
+ARG NUGET_SOURCE_URL
+ARG NUGET_PLATFORM_URL
+```
+
 </details>
 
 <details>
@@ -115,9 +126,20 @@ CONTAINER_REGISTRY_ACCESS_TOKEN | Y | password to authenticate to the destinatio
 NUGET_PLATFORM_URL | Y | platform URL to allow required common package imports / `https://<your_repo_domain>/api/v4/projects/<common_package_group_id>/nuget/index.json`
 NUGET_SOURCE_URL | Y | nuget source URL to allow required nuget owned package imports / `https://api.nuget.org/v3/index.json`
 
+### In local Dockerfile
+
+Make sure the dockerfile contains the following ARGs:
+
+```bash
+ARG GITLAB_PACKAGE_REGISTRY_USERNAME
+ARG GITLAB_PACKAGE_REGISTRY_PASSWORD
+ARG NUGET_SOURCE_URL
+ARG NUGET_PLATFORM_URL
+```
+
 </details>
 
-### Workflow Piplines For GitHub
+### Workflow Pipelines for GitHub
 
 Docker file is created under root /Dockerfile which does a build and push to the configured registry container.
 For a sucessfull pipeline run, Once the dotnet repo is created add the below CI-CD pipeline variables for the Repository
@@ -126,7 +148,6 @@ For a sucessfull pipeline run, Once the dotnet repo is created add the below CI-
 CONTAINER_REGISTRY_URL : conatiner-registry-url
 CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
 CONTAINER_REGISTRY_USER : conatiner-registry-user
-
 PACKAGE_REGISTRY_USERNAME : Github-package-registry-user-where-commonisstored
 PACKAGE_REGISTRY_PASSWORD: Github-package-registry-password
 NUGET_PLATFORM_URL: Nuget-platform-github-url
@@ -144,7 +165,6 @@ NUGET_SOURCE_URL: Nuget-common-package-source-url
 CONTAINER_REGISTRY_URL : conatiner-registry-url
 CONTAINER_REGISTRY_ACCESS_TOKEN : conatiner-registry-accesstoken
 CONTAINER_REGISTRY_USER : conatiner-registry-user
-
 ```
 
 - Update the nuget.config files with the gitlab specific common library path , similar to below
@@ -155,21 +175,18 @@ CONTAINER_REGISTRY_USER : conatiner-registry-user
   <add key="Username" value="%GITLAB_PACKAGE_REGISTRY_USERNAME%" />
   <add key="ClearTextPassword" value="%GITLAB_PACKAGE_REGISTRY_PASSWORD%" />
 </gitlab>
-
 ```
 
-- Update the docker file to use these ARG variables
+- Update the docker file to use these ARG variables 
 
 ``` bash
-
 ARG GITLAB_PACKAGE_REGISTRY_USERNAME
 ARG GITLAB_PACKAGE_REGISTRY_PASSWORD
-
 ```
 
 ### Grafana Display
 
-Once the NetObsStats Generator creates all the necessary data required for the Network Observability the grafana can be used for visualizations. The [grafana chart](./docs/grafana.json) can be used to for Network Observability visualizations which produces the below displays
+Once the NetObsStats Generator creates all the necessary data required for the Network Observability the grafana can be used for visualizations. The [grafana chart](./docs/grafana.json) can be used for Network Observability visualizations which produces the below displays
 
 ![Grafana Display 1](./docs/Grafana1.png)
 
