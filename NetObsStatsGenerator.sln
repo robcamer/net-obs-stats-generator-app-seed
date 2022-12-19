@@ -1,23 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30114.105
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F4C12C3B-BA6E-4020-8339-326E83FC3C8E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetObsStatsGenerator", "src\App\NetObsStatsGenerator.csproj", "{768927A0-5E2C-4CF5-B14F-36AC2FAA1896}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetObsStatsGenerator", "src\App\NetObsStatsGenerator.csproj", "{768927A0-5E2C-4CF5-B14F-36AC2FAA1896}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{6AAF1B59-16DE-490A-BC74-263884D6E86C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Test", "test\App.Test\App.Test.csproj", "{782CB784-B2C2-410C-9668-97CA5D37A6DA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetObsStatsGenerator.Tests", "test\App.Tests\NetObsStatsGenerator.Tests.csproj", "{782CB784-B2C2-410C-9668-97CA5D37A6DA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{768927A0-5E2C-4CF5-B14F-36AC2FAA1896}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -29,8 +22,10 @@ Global
 		{782CB784-B2C2-410C-9668-97CA5D37A6DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{782CB784-B2C2-410C-9668-97CA5D37A6DA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{768927A0-5E2C-4CF5-B14F-36AC2FAA1896} = {F4C12C3B-BA6E-4020-8339-326E83FC3C8E}
-		{782CB784-B2C2-410C-9668-97CA5D37A6DA} = {6AAF1B59-16DE-490A-BC74-263884D6E86C}
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F90402D8-BAB0-4371-9124-B4DD1C7B31E4}
 	EndGlobalSection
 EndGlobal

@@ -14,8 +14,8 @@
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
 		<PackageReference Include="Polly" Version="7.2.3" />
-		<PackageReference Include="EFR.NetworkObservability.Common" Version="1.0.*" />
-		<PackageReference Include="EFR.NetworkObservability.RabbitMQ" Version="1.0.*" />
+		<PackageReference Include="EFR.NetworkObservability.Common" Version="1.0.0" />
+		<PackageReference Include="EFR.NetworkObservability.RabbitMQ" Version="1.0.0" />
 		<PackageReference Include="System.Data.SqlClient" Version="4.8.4" />
 	</ItemGroup>
 

@@ -2,121 +2,121 @@
 using EFR.NetworkObservability.Common.Exceptions;
 using EFR.NetworkObservability.RabbitMQ;
 using MassTransit;
-using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace EFR.NetworkObservability.NetObsStatsGenerator;
 public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 {
-	private readonly ILogger<NetObsStatsGenerator> logger;
-	private int julianDay;
-	private int intervalInSeconds;
-	private IDbConnection? connection = null;
-	private IDbCommand? command = null;
-	private readonly IDbConnectionFactory connectionFactory;
+  private readonly ILogger logger;
+  private int julianDay;
+  private int intervalInSeconds;
+  private IDbConnection? connection = null;
+  private IDbCommand? command = null;
+  private readonly IDbConnectionFactory connectionFactory;
 
-	/// <summary>
-	/// Default constructor, Instantiates the NetObsStatsGenerator with required parameters
-	/// </summary>
-	/// <param name="logger">logger object for the class</param>
-	/// <param name="env">On object containing initialized environment variables</param>
-	/// <param name="utils">The utility instance</param>
-	/// <param name="connectionFactory">db connection factory instance</param>
-	public NetObsStatsGenerator(ILogger<NetObsStatsGenerator> logger, IDbConnectionFactory connectionFactory)
-	{
-		this.logger = logger;
-		this.connectionFactory = connectionFactory;
-	}
+  /// <summary>
+  /// Default constructor, Instantiates the NetObsStatsGenerator with required parameters
+  /// </summary>
+  /// <param name="logger">logger object for the class</param>
+  /// <param name="env">On object containing initialized environment variables</param>
+  /// <param name="utils">The utility instance</param>
+  /// <param name="connectionFactory">db connection factory instance</param>
+  public NetObsStatsGenerator(ILogger logger, IDbConnectionFactory connectionFactory)
+  {
+    this.logger = logger;
+    this.connectionFactory = connectionFactory;
+  }
 
-	private void ValidateRabbitMQMessage(ConsumeContext<EventMetaDataMessage> context)
-	{
-		if (context == null || context.Message == null)
-		{
-			throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message is empty");
-		}
+  private void ValidateRabbitMQMessage(ConsumeContext<EventMetaDataMessage> context)
+  {
+    if (context == null || context.Message == null)
+    {
+      throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message is empty");
+    }
 
-		EventMetaDataMessage message = context.Message;
+    EventMetaDataMessage message = context.Message;
 
-		string? julianDaystring = message.JulianDay;
-		if (string.IsNullOrEmpty(julianDaystring))
-		{
-			throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message does not contain a JulianDay");
-		}
-		julianDay = int.Parse(julianDaystring);
+    string? julianDaystring = message.JulianDay;
+    if (string.IsNullOrEmpty(julianDaystring))
+    {
+      throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message does not contain a JulianDay");
+    }
+    julianDay = int.Parse(julianDaystring);
 
-		string? intervalInSecondsstring = message.IntervalInSeconds;
-		if (string.IsNullOrEmpty(intervalInSecondsstring))
-		{
-			throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message does not contain a IntervalInSeconds");
-		}
-		intervalInSeconds = int.Parse(intervalInSecondsstring);
-	}
+    string? intervalInSecondsstring = message.IntervalInSeconds;
+    if (string.IsNullOrEmpty(intervalInSecondsstring))
+    {
+      throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message does not contain a IntervalInSeconds");
+    }
+    intervalInSeconds = int.Parse(intervalInSecondsstring);
+  }
 
-	/// <summary>
-	/// Consumer API for the EventMetaDataMessage rabbit mq message
-	/// </summary>
-	/// <param name="context">EventMetaDataMessage rabbit mq messages</param>
-	public async Task Consume(ConsumeContext<EventMetaDataMessage> context)
-	{
-		try
-		{
-			ValidateRabbitMQMessage(context);
-			OpenSqlConnect();
-			CreatePacketsView();
-			CreateLookupProtocolTypes();
-			CreateIntervalsAndTally();
-			PopulateIntervals();
+  /// <summary>
+  /// Consumer API for the EventMetaDataMessage rabbit mq message
+  /// </summary>
+  /// <param name="context">EventMetaDataMessage rabbit mq messages</param>
+  public async Task Consume(ConsumeContext<EventMetaDataMessage> context)
+  {
+    try
+    {
+      ValidateRabbitMQMessage(context);
+      OpenSqlConnect();
+      CreatePacketsView();
+      CreateLookupProtocolTypes();
+      CreateIntervalsAndTally();
+      PopulateIntervals();
 
-			await Task.Yield();
-		}
-		catch (InvalidRabbitMQMessageException e)
-		{
-			logger.LogError("The incoming RabbitMQ message is invalid\n{}", e);
-		}
-		catch (System.Exception e)
-		{
-			logger.LogError("An unexpected exception occurred during NetObsStats Generator\n{}", e);
-		}
-		finally
-		{
-			if (connection != null)
-			{
-				connection.Dispose();
-			}
-		}
+      await Task.Yield();
+    }
+    catch (InvalidRabbitMQMessageException e)
+    {
+      logger.Error(e, "The incoming RabbitMQ message is invalid!");
+    }
+    catch (System.Exception e)
+    {
+      logger.Error(e, "An unexpected exception occurred during NetObsStats Generator!");
+    }
+    finally
+    {
+      if (connection != null)
+      {
+        connection.Dispose();
+      }
+    }
 
-	}
+  }
 
-	private void PopulateIntervals()
-	{
-		DateTime calenderDate = GetDateFromJulian(julianDay);
+  private void PopulateIntervals()
+  {
+    DateTime calenderDate = GetDateFromJulian(julianDay);
 
-		string sql = string.Format(@"INSERT INTO ReportIntervals([julianDay],[intervalLabel],[nextInterval])
+    string sql = string.Format(@"INSERT INTO ReportIntervals([julianDay],[intervalLabel],[nextInterval])
 		SELECT {3}, DATEADD(s,(num - 1)*{1},'{0}') as [intervalLabel],
 		DATEADD(s, num * {1},'{0}') AS nextInterval FROM Tally
 		WHERE CONVERT(DATETIME, DATEADD(s,(num-1)*{1},'{0}')) BETWEEN '{0}' AND '{2}'",
-		calenderDate,
-		intervalInSeconds,
-		calenderDate.AddDays(1),
-		julianDay
-		);
+    calenderDate,
+    intervalInSeconds,
+    calenderDate.AddDays(1),
+    julianDay
+    );
 
-		command!.CommandText = sql;
-		command.ExecuteNonQuery();
-		logger.LogDebug("Successfully Inserted Data into ReportIntervals");
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    logger.Debug("Successfully Inserted Data into ReportIntervals");
 
-	}
-	private void CreateIntervalsAndTally()
-	{
-		var rows = 100000;
-		string sql = string.Format(@"
+  }
+  private void CreateIntervalsAndTally()
+  {
+    var rows = 100000;
+    string sql = string.Format(@"
 		IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ReportIntervals'))
 		CREATE TABLE ReportIntervals (julianDay INT, intervalLabel DateTime, nextInterval DateTime)");
 
-		command!.CommandText = sql;
-		command.ExecuteNonQuery();
-		logger.LogDebug("Created ReportIntervals");
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    logger.Debug("Created ReportIntervals");
 
-		sql = string.Format(@"
+    sql = string.Format(@"
 			IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Tally'))
 			with e1(n) AS ( select 1 union all select 1
 			union all select 1 union all select 1 union all select 1 union all select 1
@@ -127,25 +127,25 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 			cteTally(N) AS (select ROW_NUMBER() OVER (ORDER BY (SELECT N)) FROM E8)
 			select num = ISNULL(CAST(N AS INT), 0) INTO Tally FROM cteTally WHERE N
 			<={0}", rows);
-		command!.CommandText = sql;
-		command.ExecuteNonQuery();
-		logger.LogDebug("Created Tally");
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    logger.Debug("Created Tally");
 
-		sql = string.Format(@"
+    sql = string.Format(@"
 		IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Tally'))
 			Alter table Tally
 			Add constraint PK_Tally PRIMARY KEY CLUSTERED(Num)
 			WITH FILLFACTOR = 100;");
-		command.CommandText = sql;
-		command.ExecuteNonQuery();
-	}
+    command.CommandText = sql;
+    command.ExecuteNonQuery();
+  }
 
-	/// <summary>
-	/// Create lookup table "ProtocolTypes" containing index to friendly name for standard protocols.
-	/// </summary>
-	private void CreateLookupProtocolTypes()
-	{
-		string sql = @"
+  /// <summary>
+  /// Create lookup table "ProtocolTypes" containing index to friendly name for standard protocols.
+  /// </summary>
+  private void CreateLookupProtocolTypes()
+  {
+    string sql = @"
 		IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ProtocolTypes'))
 		CREATE TABLE [ProtocolTypes](
 			[protocolTypeId] [tinyint] NOT NULL,
@@ -156,10 +156,10 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 		)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 		) ON [PRIMARY];";
 
-		command!.CommandText = sql;
-		command.ExecuteNonQuery();
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
 
-		sql = @"
+    sql = @"
 		INSERT  [ProtocolTypes] ([protocolTypeId], [protocolType]) VALUES (0, N'HOPOPT');
 		INSERT  [ProtocolTypes] ([protocolTypeId], [protocolType]) VALUES (1, N'ICMP');
 		INSERT  [ProtocolTypes] ([protocolTypeId], [protocolType]) VALUES (2, N'IGMP');
@@ -417,86 +417,86 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 		INSERT  [ProtocolTypes] ([protocolTypeId], [protocolType]) VALUES (254, N'Experimentation');
 		INSERT  [ProtocolTypes] ([protocolTypeId], [protocolType]) VALUES (255, N'Reserved');";
 
-		command!.CommandText = sql;
-		command.ExecuteNonQuery();
-		logger.LogDebug("Created ProtocolTypes lookup table");
-	}
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    logger.Debug("Created ProtocolTypes lookup table");
+  }
 
-	private void OpenSqlConnect()
-	{
-		connection = connectionFactory.CreateConnection();
-		connection.Open();
-		command = connection.CreateCommand();
-	}
+  private void OpenSqlConnect()
+  {
+    connection = connectionFactory.CreateConnection();
+    connection.Open();
+    command = connection.CreateCommand();
+  }
 
-	/// <summary>
-	/// Create PacketsView view plus add its indexes.
-	/// </summary>
-	private void CreatePacketsView()
-	{
-		if (!ViewExists())
-		{
-			string sql = @"
+  /// <summary>
+  /// Create PacketsView view plus add its indexes.
+  /// </summary>
+  private void CreatePacketsView()
+  {
+    if (!ViewExists())
+    {
+      string sql = @"
 				CREATE VIEW [dbo].[PacketsView] WITH SCHEMABINDING AS
 					SELECT I.packetID, M.collectorName as Collector, I.timestamp, I.ipPacketSize, I.sourceIP, I.destinationIP, I.typeOfService, I.protocol, I.sourcePort, I.destinationPort, I.julianDay
 					FROM [dbo].PacketIndices I, [dbo].PcapMetaData M
 					WHERE I.pcapFileProcessingLogID = M.pcapFileProcessingLogID";
 
-			command!.CommandText = sql;
-			command.ExecuteNonQuery();
-			logger.LogDebug("Created PacketsView");
+      command!.CommandText = sql;
+      command.ExecuteNonQuery();
+      logger.Debug("Created PacketsView");
 
-			sql = @"
+      sql = @"
 				CREATE UNIQUE CLUSTERED INDEX [PacketsViewIndex] ON [dbo].[PacketsView]
 				(
 					[packetID] ASC
 				)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]";
 
-			command!.CommandText = sql;
-			command.ExecuteNonQuery();
+      command!.CommandText = sql;
+      command.ExecuteNonQuery();
 
-			sql = @"
+      sql = @"
 				CREATE NONCLUSTERED INDEX [IX_NonClusteredIndex_Collector] ON [dbo].[PacketsView]
 				(
 					[Collector] ASC
 				)
 				INCLUDE([Timestamp]) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, FILLFACTOR = 90, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]";
 
-			command!.CommandText = sql;
-			command.ExecuteNonQuery();
-			logger.LogDebug("Created PacketsView indexes");
-		}
-	}
+      command!.CommandText = sql;
+      command.ExecuteNonQuery();
+      logger.Debug("Created PacketsView indexes");
+    }
+  }
 
-	private bool ViewExists()
-	{
-		string sql = @"IF EXISTS(select * FROM sys.views where name = 'PacketsView') SELECT 1 ELSE SELECT 0";
+  private bool ViewExists()
+  {
+    string sql = @"IF EXISTS(select * FROM sys.views where name = 'PacketsView') SELECT 1 ELSE SELECT 0";
 
-		command!.CommandText = sql;
-		command.ExecuteNonQuery();
-		int x = Convert.ToInt32(command.ExecuteScalar());
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    int x = Convert.ToInt32(command.ExecuteScalar());
 
-		if (x == 1)
-		{
-			logger.LogDebug("PacketsView already exists");
-			return true;
-		}
-		logger.LogDebug("PacketsView doesnt exists");
-		return false;
-	}
+    if (x == 1)
+    {
+      logger.Debug("PacketsView already exists");
+      return true;
+    }
+    logger.Debug("PacketsView doesnt exists");
+    return false;
+  }
 
-	private DateTime GetDateFromJulian(int julianDay)
-	{
-		DateTime dt = DateTime.UtcNow;
+  private DateTime GetDateFromJulian(int julianDay)
+  {
+    DateTime dt = DateTime.UtcNow;
 
-		//Is this from last year?
-		if (dt.DayOfYear < julianDay)
-		{
-			return new DateTime(dt.Year - 1, 1, 1).AddDays(julianDay - 1);
-		}
-		else
-		{
-			return new DateTime(dt.Year, 1, 1).AddDays(julianDay - 1);
-		}
-	}
+    //Is this from last year?
+    if (dt.DayOfYear < julianDay)
+    {
+      return new DateTime(dt.Year - 1, 1, 1).AddDays(julianDay - 1);
+    }
+    else
+    {
+      return new DateTime(dt.Year, 1, 1).AddDays(julianDay - 1);
+    }
+  }
 }

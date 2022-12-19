@@ -6,8 +6,8 @@ namespace EFR.NetworkObservability.NetObsStatsGenerator;
 /// </summary>
 public interface IDbConnectionFactory
 {
-	/// <summary>
-	/// Creates the connection
-	/// </summary>
-	IDbConnection CreateConnection();
+  /// <summary>
+  /// Creates the connection
+  /// </summary>
+  IDbConnection CreateConnection();
 }

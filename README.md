@@ -33,9 +33,16 @@ Below are snippets of the database records created.
 
 ![ReportIntervals](./docs/ReportIntervals.png)
 
-### Application Development
+## Application Development
 
-After secret file `.env` has been configured, load it with `export 'cat .env' && bash`
+The project contains a [sample .env](./.env.example) file that must be configured and made into a .env file before dotnet commands can be issued.
+Once the file has been configured, there are three ways it can be loaded.
+
+- The most simple way is just by opening a new bash terminal. The .env file will be injected into the environment automatically.
+- The following command can be issued to load the .env `source .env`
+- If the above two doesn't work, the following command can be issued if the .env file has comments ``export `cat .env | awk '!/^[[:blank:]]*$/' | grep -o '^[^#]*'` && bash``. If comments are removed from the .env file then this command will work ``export `cat .env` && bash``
+
+After the .env is loaded the following commands will work.
 
 - In src/App, run `dotnet build` to build your app
 - In src/App, run `dotnet run` to run your app
@@ -44,6 +51,21 @@ After secret file `.env` has been configured, load it with `export 'cat .env' &&
 ## Environment Configuration
 
 The following variables are required to allow  successful pipeline and local builds. Select a platform to view.
+
+### Environment variables necessary for local development
+
+NAME | REQUIRED (Y/N) | PURPOSE / EXAMPLE VALUES
+--- | --- | ---
+EVENTDATA_PROCESS_QUEUE | Y | Queue name to push messages
+SQL_SERVER_HOST | Y | SQL server hostname
+SQL_SERVER_USERNAME | Y | SQL server username
+SQL_SERVER_PASSWORD | Y | SQL server password
+DB_CONNECTION_STRING | Y | SQL server database connection string
+RABBITMQ_HOSTNAME | Y | RabbitMQ hostname
+RABBITMQ_USERNAME | Y | RabbitMQ username to use for connection
+RABBITMQ_PASSWORD | Y | RabbitMQ password
+RABBITMQ_PORT | N | RabbitMQ host port(defaults to 5672)
+ELASTICSEARCH_URI| N | When provided logs will be pushed to an elasticsearch instance
 
 <details>
   <summary>GitHub Variables</summary>
@@ -95,8 +117,8 @@ In repo's `nuget.config` file, update the file to point to use gitlab variables,
 <configuration>
   <packageSources>
      <clear />
-	 <add key="nuget" value="%NUGET_SOURCE_URL%" />
-	 <add key="gitlab" value="%NUGET_PLATFORM_URL%" />
+  <add key="nuget" value="%NUGET_SOURCE_URL%" />
+  <add key="gitlab" value="%NUGET_PLATFORM_URL%" />
   </packageSources>
   <packageSourceCredentials>
      <gitlab>
@@ -156,7 +178,7 @@ NUGET_SOURCE_URL: Nuget-common-package-source-url
 
 ### Workflow Piplines For GitLab
 
-- Create the necessary Common library packages using repo https://code.afcmade.com/devteam/cse/cse-efr-coral/templates/NetworkObservabilityUtilities
+- Create the necessary Common library packages using repo <https://code.afcmade.com/devteam/cse/cse-efr-coral/templates/NetworkObservabilityUtilities>
 - Create a GitLab Pipline Runner for the group if not already available. Refer to the steps to create a runner with the `efr` tag [here](https://dev.azure.com/CSECodeHub/CSE%20Gov%20-%20Mission%20Capabilities/_wiki/wikis/513266---EFR---Azure-Mission-Edge-Application-Platform.wiki/31862/GitLab-Runner-for-use-with-Coral-GitLab-pipelines)
 - Clone the App seed repo into GitLab
 - Create the below CICD variables
@@ -170,14 +192,14 @@ CONTAINER_REGISTRY_USER : conatiner-registry-user
 - Update the nuget.config files with the gitlab specific common library path , similar to below
 
 ```bash
-<add key="gitlab" value="https://gitlab.com/api/v4/projects/---/index.json" /> 
+<add key="gitlab" value="https://gitlab.com/api/v4/projects/---/index.json" />
 <gitlab>
   <add key="Username" value="%GITLAB_PACKAGE_REGISTRY_USERNAME%" />
   <add key="ClearTextPassword" value="%GITLAB_PACKAGE_REGISTRY_PASSWORD%" />
 </gitlab>
 ```
 
-- Update the docker file to use these ARG variables 
+- Update the docker file to use these ARG variables
 
 ``` bash
 ARG GITLAB_PACKAGE_REGISTRY_USERNAME
@@ -231,7 +253,7 @@ These values can be obtained from your specific container registry provider.
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+the rights to use your contribution. For details, visit <https://cla.opensource.microsoft.com>.
 
 When you submit a pull request, a CLA bot will automatically determine whether you need to provide
 a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions

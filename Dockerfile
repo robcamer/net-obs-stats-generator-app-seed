@@ -1,23 +1,28 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 as build
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
+WORKDIR /app
 
 ARG GITHUB_PACKAGE_REGISTRY_USERNAME
 ARG GITHUB_PACKAGE_REGISTRY_PASSWORD
 ARG NUGET_SOURCE_URL
 ARG NUGET_PLATFORM_URL
 
-WORKDIR /src
-COPY src/App/NetObsStatsGenerator.csproj .
-COPY src/App/nuget.config .
+# Copy necessary files
+COPY ./src/App/ ./
+COPY nuget.config ./
+
+# Restore as distinct layers
 RUN dotnet restore
+# Build and publish a release
+RUN dotnet publish -c Release -o out --no-restore
 
-COPY src/App .
-RUN dotnet publish -c release -o /app --no-restore
-
+# Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:6.0 as app
 WORKDIR /app
-COPY /src/App/docker-healthcheck.sh /app/
-COPY --from=build /app .
 
-ENV ASPNETCORE_URLS "http://*:5000"
+RUN apt-get update -y
+
+COPY ./src/App/docker-healthcheck.sh .
+COPY --from=build-env /app/out .
+
 HEALTHCHECK CMD ["/app/docker-healthcheck.sh"]
-CMD ["dotnet", "App.dll"]
+ENTRYPOINT ["dotnet", "NetObsStatsGenerator.dll"]
