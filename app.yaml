@@ -1,8 +1,12 @@
-template: external-service
+template: istio-service
 deployments:
   dev:
     target: dev
     clusters: 1
     values:
-      image: myregistry.io/myimage:tag
+      name: myimage
+      versionIndependentName: dotnet-app
+      version: "v1"
+      image: myregistry.io/myimage:main
       port: 5000
+      config: "EVENTDATA_PROCESS_QUEUE: 'event_queue'\n  RABBITMQ_HOSTNAME: 'name.namespace.svc.cluster.local'\n  RABBITMQ_USERNAME: 'user'\n  RABBITMQ_PORT: '5672'"
