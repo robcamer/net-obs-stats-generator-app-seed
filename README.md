@@ -29,9 +29,9 @@ NetObsStatsGenerator consumes the `EventMetadata` RabbitMq message which contain
 
 Below are snippets of the database records created.
 
-![PacketsView](./docs/PacketsView.png)
+![PacketsView](./docs/packets-view.png)
 
-![ReportIntervals](./docs/ReportIntervals.png)
+![ReportIntervals](./docs/report-intervals.png)
 
 ## Application Development
 
@@ -158,6 +158,7 @@ ARG NUGET_PLATFORM_URL
 
 </details>
 
+
 ### Workflow Pipelines for GitHub
 
 Docker file is created under root /Dockerfile which does a build and push to the configured registry container.
@@ -203,15 +204,31 @@ ARG GITLAB_PACKAGE_REGISTRY_USERNAME
 ARG GITLAB_PACKAGE_REGISTRY_PASSWORD
 ```
 
-### Grafana Display
+## Grafana For Network Observability Visualizations
 
-Once the NetObsStats Generator creates all the necessary data required for the Network Observability the grafana can be used for visualizations. The [grafana chart](./docs/grafana.json) can be used for Network Observability visualizations which produces the below displays
+Note: Once the NetObsStatsGenerator is successfully deployed, the NetObsStatsGenerator app team should contact the control plane platform team to get the Network Observability Dashboards configured.
 
-![Grafana Display 1](./docs/Grafana1.png)
+### Changes needed to configure the network-observability dashboard
 
-![Grafana Display 2](./docs/Grafana2.png)
+Network Observability Dashboard can be found [here](./deployment/grafana/network-observability-dashboard.json)
 
-![Grafana Display 3](./docs/Grafana3.png)
+The above json file contains the required Grafana dashboard configuration that the control plane platform team must apply to the control plane seed by copying the contents of the file to the network observability control plane instance network-observability-control-plane-seed/manifests/grafana/patches folder of the deploying the NetStatsGenerator application service on the control plane.
+
+More specific details on how to configure the app specific dashboard in control plane can be found at network-observability-control-plane-seed/docs/design-decisions/service-specific-configuration.md
+
+Once the dashboards are configured by the platform team, Grafana can be used for visualizations. NetObsStatsGenerator creates all the necessary data required for the Network Observability visualizations.
+
+Login to the Grafana by kubernetes port-forward connection, the dashboard can be accessed at localhost with the port:3000. Username and password can be found under kubernetes/namespace/Configuration/Secrets/grafana/password
+
+![img](./docs/grafana-port-forwarding.png)
+
+Below are some snippets of the network observability dashboad
+
+![Grafana Display 1](./docs/grafana-dashboard-01.png)
+
+![Grafana Display 2](./docs/grafana-dashboard-02.png)
+
+![Grafana Display 3](./docs/grafana-dashboard-03.png)
 
 ### Container Development
 
