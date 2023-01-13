@@ -80,7 +80,13 @@ See [.env.example](.env.example) for more info
 
 ### In repository's CI/CD setting variables
 
-Repo action secrets can be modified at `Repo` -> `Settings` -> `Secrets` -> `Actions` -> `New repository secret`
+Secrets can be created by following the below steps:
+
+- [GitHub Manual Way](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) Or
+- By using [gh secret CLI](https://cli.github.com/manual/gh_secret_set) and `env` file as below
+  - Installation details for [gh secret](https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian-ubuntu-linux-raspberry-pi-os-apt)
+  - Create a .envgh in your local with all the env variables. Sample can be found [here](./.envgh.example)
+  - Run the command to generate the secrets for your repository `gh secret set -f .envgh -R <githubrepourl>`
 
 NAME | REQUIRED (Y/N) | PURPOSE / EXAMPLE VALUES
 --- | --- | ---
@@ -136,6 +142,11 @@ NUGET_SOURCE_URL | Y | nuget source URL to allow required nuget owned package im
 See [.env.example](.env.example) for more info
 
 ### In repository's CI/CD setting variables
+
+Secrets can be created by following the below steps:
+
+- [GitLab Manual Way](https://docs.gitlab.com/ee/ci/variables/#for-a-project) Or
+- By using a [GitLab Rest API](https://docs.gitlab.com/ee/api/project_level_variables.html#create-a-variable)
 
 NAME | REQUIRED (Y/N) | PURPOSE / EXAMPLE VALUES
 --- | --- | ---
