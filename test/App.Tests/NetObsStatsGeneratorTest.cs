@@ -12,7 +12,7 @@ using static EFR.NetworkObservability.Common.Constants;
 namespace EFR.NetworkObservability.NetObsStatsGenerator.Test;
 
 [ExcludeFromCodeCoverage]
-public class TestNetObsStatsGenerator : IDisposable
+public class TestNetObsStatsGenerator
 {
   private readonly NetObsStatsGenerator netObsStatsGenerator;
   private readonly Mock<ILogger> mockLogger;
@@ -48,17 +48,6 @@ public class TestNetObsStatsGenerator : IDisposable
     netObsStatsGenerator = new NetObsStatsGenerator(mockLogger.Object, connectionFactoryMock.Object);
   }
 
-  public void Dispose()
-  {
-    Dispose(true);
-    GC.SuppressFinalize(this);
-  }
-
-  protected virtual void Dispose(bool disposing)
-  {
-    // do nothing
-  }
-
   private static EventMetaDataMessage BuildEventMetaDataMessage() => new()
   {
     JulianDay = "145",
@@ -67,24 +56,13 @@ public class TestNetObsStatsGenerator : IDisposable
     IntervalInSeconds = "300"
   };
 
-
-  private static EventMetaDataMessage BuildLastYearEventMetaDataMessage() => new()
+  [Fact]
+  public async void TestConsumeThrowsExceptionWithNullContext()
   {
-    JulianDay = DateTime.UtcNow.AddDays(1).DayOfYear.ToString(),
-    Ready = "true",
-    ReProcess = "false",
-    IntervalInSeconds = "300"
-  };
+    await netObsStatsGenerator.Consume(null);
 
-
-  private static EventMetaDataMessage BuildThisYearEventMetaDataMessage() =>
-    new()
-    {
-      JulianDay = DateTime.UtcNow.DayOfYear.ToString(),
-      Ready = "true",
-      ReProcess = "false",
-      IntervalInSeconds = "300"
-    };
+    mockLogger.ShouldLogExceptionError<ArgumentNullException>("Value cannot be null. (Parameter 'context')");
+  }
 
   [Fact]
   public async void TestConsumeThrowsExceptionWithNullMessage()
@@ -96,36 +74,6 @@ public class TestNetObsStatsGenerator : IDisposable
     await netObsStatsGenerator.Consume(mockConsumeContext.Object);
 
     mockLogger.ShouldLogExceptionError<InvalidRabbitMQMessageException>("The incoming RabbitMQ message is empty");
-  }
-
-  [Fact]
-  public async void TestConsumeThrowsExceptionWithMissingJulianDay()
-  {
-    // Setup
-    EventMetaDataMessage message = BuildEventMetaDataMessage();
-    message.JulianDay = null;
-    mockConsumeContext.Setup(c => c.Message).Returns(message);
-
-    // Test
-    await netObsStatsGenerator.Consume(mockConsumeContext.Object);
-
-    // Validate
-    mockLogger.ShouldLogExceptionError<InvalidRabbitMQMessageException>("The incoming RabbitMQ message does not contain a JulianDay");
-  }
-
-  [Fact]
-  public async void TestConsumeThrowsExceptionWithMissingIntervalInSeconds()
-  {
-    // Setup
-    EventMetaDataMessage message = BuildEventMetaDataMessage();
-    message.IntervalInSeconds = null;
-    mockConsumeContext.Setup(c => c.Message).Returns(message);
-
-    // Test
-    await netObsStatsGenerator.Consume(mockConsumeContext.Object);
-
-    // Validate
-    mockLogger.ShouldLogExceptionError<InvalidRabbitMQMessageException>("The incoming RabbitMQ message does not contain a IntervalInSeconds");
   }
 
   [Fact]
@@ -144,93 +92,8 @@ public class TestNetObsStatsGenerator : IDisposable
     connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
 
     // validate PacketsView
-    mockLogger.ShouldLogDebug("PacketsView doesnt exists");
-    mockLogger.ShouldLogDebug("Created PacketsView");
+    mockLogger.ShouldLogInfo("Created PacketsView");
+    mockLogger.ShouldLogInfo("Created ProtocolTypes lookup table");
 
-    //validate Tally and reportIntervals Creation
-    mockLogger.ShouldLogDebug("Created ReportIntervals");
-    mockLogger.ShouldLogDebug("Created Tally");
-
-    // Validate insert to report intervals
-    mockLogger.ShouldLogDebug("Successfully Inserted Data into ReportIntervals");
-
-  }
-
-  [Fact]
-  public async void TestConsumeSuccessWithExistingView()
-  {
-    // Setup
-    EventMetaDataMessage message = BuildEventMetaDataMessage();
-    mockConsumeContext.Setup(c => c.Message).Returns(message);
-
-    string sql = @"IF EXISTS(select * FROM sys.views where name = 'PacketsView') SELECT 1 ELSE SELECT 0";
-    commandMock.Setup(x => x.CommandText).Returns(sql);
-    commandMock.Setup(x => x.ExecuteScalar()).Returns(1);
-
-    // Test
-    await netObsStatsGenerator.Consume(mockConsumeContext.Object);
-
-    // validate openConnection
-    Assert.NotNull(connectionMock);
-    connectionMock.Verify(x => x.Open(), Times.Once());
-    connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
-
-    // validate PacketsView
-    mockLogger.ShouldLogDebug("PacketsView already exists");
-  }
-
-
-  [Fact]
-  public async void TestConsumelastYearSuccess()
-  {
-    // Setup
-    EventMetaDataMessage message = BuildLastYearEventMetaDataMessage();
-    mockConsumeContext.Setup(c => c.Message).Returns(message);
-
-    // Test
-    await netObsStatsGenerator.Consume(mockConsumeContext.Object);
-
-    // validate openConnection
-    Assert.NotNull(connectionMock);
-    connectionMock.Verify(x => x.Open(), Times.Once());
-    connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
-
-    // validate PacketsView
-    mockLogger.ShouldLogDebug("PacketsView doesnt exists");
-    mockLogger.ShouldLogDebug("Created PacketsView");
-
-    //validate Tally and reportIntervals Creation
-    mockLogger.ShouldLogDebug("Created ReportIntervals");
-    mockLogger.ShouldLogDebug("Created Tally");
-
-    // Validate insert to report intervals
-    mockLogger.ShouldLogDebug("Successfully Inserted Data into ReportIntervals");
-  }
-
-  [Fact]
-  public async void TestConsumeThisYearSuccess()
-  {
-    // Setup
-    EventMetaDataMessage message = BuildThisYearEventMetaDataMessage();
-    mockConsumeContext.Setup(c => c.Message).Returns(message);
-
-    // Test
-    await netObsStatsGenerator.Consume(mockConsumeContext.Object);
-
-    // validate openConnection
-    Assert.NotNull(connectionMock);
-    connectionMock.Verify(x => x.Open(), Times.Once());
-    connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
-
-    // validate PacketsView
-    mockLogger.ShouldLogDebug("PacketsView doesnt exists");
-    mockLogger.ShouldLogDebug("Created PacketsView");
-
-    //validate Tally and reportIntervals Creation
-    mockLogger.ShouldLogDebug("Created ReportIntervals");
-    mockLogger.ShouldLogDebug("Created Tally");
-
-    // Validate insert to report intervals
-    mockLogger.ShouldLogDebug("Successfully Inserted Data into ReportIntervals");
   }
 }

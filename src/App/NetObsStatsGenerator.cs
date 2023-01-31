@@ -8,47 +8,17 @@ namespace EFR.NetworkObservability.NetObsStatsGenerator;
 public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 {
   private readonly ILogger logger;
-  private int julianDay;
-  private int intervalInSeconds;
-  private IDbConnection? connection = null;
-  private IDbCommand? command = null;
   private readonly IDbConnectionFactory connectionFactory;
 
   /// <summary>
   /// Default constructor, Instantiates the NetObsStatsGenerator with required parameters
   /// </summary>
   /// <param name="logger">logger object for the class</param>
-  /// <param name="env">On object containing initialized environment variables</param>
-  /// <param name="utils">The utility instance</param>
   /// <param name="connectionFactory">db connection factory instance</param>
   public NetObsStatsGenerator(ILogger logger, IDbConnectionFactory connectionFactory)
   {
     this.logger = logger;
     this.connectionFactory = connectionFactory;
-  }
-
-  private void ValidateRabbitMQMessage(ConsumeContext<EventMetaDataMessage> context)
-  {
-    if (context == null || context.Message == null)
-    {
-      throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message is empty");
-    }
-
-    EventMetaDataMessage message = context.Message;
-
-    string? julianDaystring = message.JulianDay;
-    if (string.IsNullOrEmpty(julianDaystring))
-    {
-      throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message does not contain a JulianDay");
-    }
-    julianDay = int.Parse(julianDaystring);
-
-    string? intervalInSecondsstring = message.IntervalInSeconds;
-    if (string.IsNullOrEmpty(intervalInSecondsstring))
-    {
-      throw new InvalidRabbitMQMessageException("The incoming RabbitMQ message does not contain a IntervalInSeconds");
-    }
-    intervalInSeconds = int.Parse(intervalInSecondsstring);
   }
 
   /// <summary>
@@ -59,12 +29,16 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
   {
     try
     {
-      ValidateRabbitMQMessage(context);
-      OpenSqlConnect();
-      CreatePacketsView();
-      CreateLookupProtocolTypes();
-      CreateIntervalsAndTally();
-      PopulateIntervals();
+      ArgumentNullException.ThrowIfNull(context, nameof(context));
+      InvalidRabbitMQMessageException.ThrowIfMessageNull(context.Message);
+      logger.Information($"EventMetaData rabbitmq message recieved");
+
+      using (var connection = connectionFactory.CreateConnection())
+      {
+        connection.Open();
+        CreatePacketsView(connection);
+        CreateLookupProtocolTypes(connection);
+      }
 
       await Task.Yield();
     }
@@ -72,82 +46,30 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
     {
       logger.Error(e, "The incoming RabbitMQ message is invalid!");
     }
-    catch (System.Exception e)
+    catch (ArgumentNullException e)
+    {
+      logger.Error(e, "The incoming RabbitMQ context is null!");
+    }
+    catch (Exception e)
     {
       logger.Error(e, "An unexpected exception occurred during NetObsStats Generator!");
     }
-    finally
-    {
-      if (connection != null)
-      {
-        connection.Dispose();
-      }
-    }
-
-  }
-
-  private void PopulateIntervals()
-  {
-    DateTime calenderDate = GetDateFromJulian(julianDay);
-
-    string sql = string.Format(@"INSERT INTO ReportIntervals([julianDay],[intervalLabel],[nextInterval])
-		SELECT {3}, DATEADD(s,(num - 1)*{1},'{0}') as [intervalLabel],
-		DATEADD(s, num * {1},'{0}') AS nextInterval FROM Tally
-		WHERE CONVERT(DATETIME, DATEADD(s,(num-1)*{1},'{0}')) BETWEEN '{0}' AND '{2}'",
-    calenderDate,
-    intervalInSeconds,
-    calenderDate.AddDays(1),
-    julianDay
-    );
-
-    command!.CommandText = sql;
-    command.ExecuteNonQuery();
-    logger.Debug("Successfully Inserted Data into ReportIntervals");
-
-  }
-  private void CreateIntervalsAndTally()
-  {
-    var rows = 100000;
-    string sql = string.Format(@"
-		IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ReportIntervals'))
-		CREATE TABLE ReportIntervals (julianDay INT, intervalLabel DateTime, nextInterval DateTime)");
-
-    command!.CommandText = sql;
-    command.ExecuteNonQuery();
-    logger.Debug("Created ReportIntervals");
-
-    sql = string.Format(@"
-			IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Tally'))
-			with e1(n) AS ( select 1 union all select 1
-			union all select 1 union all select 1 union all select 1 union all select 1
-			union all select 1 union all select 1 union all select 1 union all select 1 ),
-			e2(n) AS (select 1 from e1 a, e1 b),
-			e4(n) AS (select 1 from e2 a, e2 b),
-			e8(n) AS (select 1 from e4 a, e4 b),
-			cteTally(N) AS (select ROW_NUMBER() OVER (ORDER BY (SELECT N)) FROM E8)
-			select num = ISNULL(CAST(N AS INT), 0) INTO Tally FROM cteTally WHERE N
-			<={0}", rows);
-    command!.CommandText = sql;
-    command.ExecuteNonQuery();
-    logger.Debug("Created Tally");
-
-    sql = string.Format(@"
-		IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Tally'))
-			Alter table Tally
-			Add constraint PK_Tally PRIMARY KEY CLUSTERED(Num)
-			WITH FILLFACTOR = 100;");
-    command.CommandText = sql;
-    command.ExecuteNonQuery();
   }
 
   /// <summary>
   /// Create lookup table "ProtocolTypes" containing index to friendly name for standard protocols.
   /// </summary>
-  private void CreateLookupProtocolTypes()
+  private void CreateLookupProtocolTypes(IDbConnection conn)
   {
-    string sql = @"
-		IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ProtocolTypes'))
-		CREATE TABLE [ProtocolTypes](
+    using var command = conn.CreateCommand();
+
+    string sql = @"IF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ProtocolTypes') SELECT 1 ELSE SELECT 0";
+
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    if (Convert.ToInt32(command.ExecuteScalar()) == 1) return;
+
+    sql = @"CREATE TABLE [ProtocolTypes](
 			[protocolTypeId] [tinyint] NOT NULL,
 			[protocolType] [varchar](30) NOT NULL,
 		CONSTRAINT [PK_ProtocolTypes] PRIMARY KEY CLUSTERED
@@ -419,84 +341,49 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 
     command!.CommandText = sql;
     command.ExecuteNonQuery();
-    logger.Debug("Created ProtocolTypes lookup table");
-  }
-
-  private void OpenSqlConnect()
-  {
-    connection = connectionFactory.CreateConnection();
-    connection.Open();
-    command = connection.CreateCommand();
+    logger.Information("Created ProtocolTypes lookup table");
   }
 
   /// <summary>
   /// Create PacketsView view plus add its indexes.
   /// </summary>
-  private void CreatePacketsView()
+  private void CreatePacketsView(IDbConnection conn)
   {
-    if (!ViewExists())
-    {
-      string sql = @"
-				CREATE VIEW [dbo].[PacketsView] WITH SCHEMABINDING AS
-					SELECT I.packetID, M.collectorName as Collector, I.timestamp, I.ipPacketSize, I.sourceIP, I.destinationIP, I.typeOfService, I.protocol, I.sourcePort, I.destinationPort, I.julianDay
-					FROM [dbo].PacketIndices I, [dbo].PcapMetaData M
-					WHERE I.pcapFileProcessingLogID = M.pcapFileProcessingLogID";
+    using var command = conn.CreateCommand();
 
-      command!.CommandText = sql;
-      command.ExecuteNonQuery();
-      logger.Debug("Created PacketsView");
-
-      sql = @"
-				CREATE UNIQUE CLUSTERED INDEX [PacketsViewIndex] ON [dbo].[PacketsView]
-				(
-					[packetID] ASC
-				)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]";
-
-      command!.CommandText = sql;
-      command.ExecuteNonQuery();
-
-      sql = @"
-				CREATE NONCLUSTERED INDEX [IX_NonClusteredIndex_Collector] ON [dbo].[PacketsView]
-				(
-					[Collector] ASC
-				)
-				INCLUDE([Timestamp]) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, FILLFACTOR = 90, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]";
-
-      command!.CommandText = sql;
-      command.ExecuteNonQuery();
-      logger.Debug("Created PacketsView indexes");
-    }
-  }
-
-  private bool ViewExists()
-  {
-    string sql = @"IF EXISTS(select * FROM sys.views where name = 'PacketsView') SELECT 1 ELSE SELECT 0";
+    string sql = @"IF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ProtocolTypes') SELECT 1 ELSE SELECT 0";
 
     command!.CommandText = sql;
     command.ExecuteNonQuery();
-    int x = Convert.ToInt32(command.ExecuteScalar());
+    if (Convert.ToInt32(command.ExecuteScalar()) == 1) return;
 
-    if (x == 1)
-    {
-      logger.Debug("PacketsView already exists");
-      return true;
-    }
-    logger.Debug("PacketsView doesnt exists");
-    return false;
-  }
+    sql = @"
+			CREATE VIEW [dbo].[PacketsView] WITH SCHEMABINDING AS
+				SELECT I.packetID, M.collectorName as Collector, I.timestamp, I.ipPacketSize, I.sourceIP, I.destinationIP, I.typeOfService, I.protocol, I.sourcePort, I.destinationPort, I.julianDay
+				FROM [dbo].PacketIndices I, [dbo].PcapMetaData M
+				WHERE I.pcapFileProcessingLogID = M.pcapFileProcessingLogID";
 
-  private DateTime GetDateFromJulian(int julianDay)
-  {
-    DateTime dt = DateTime.UtcNow;
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
 
-    //Is this from last year?
-    if (dt.DayOfYear < julianDay)
-    {
-      return new DateTime(dt.Year - 1, 1, 1).AddDays(julianDay - 1);
-    }
-    else
-    {
-      return new DateTime(dt.Year, 1, 1).AddDays(julianDay - 1);
-    }
+    sql = @"
+			CREATE UNIQUE CLUSTERED INDEX [PacketsViewIndex] ON [dbo].[PacketsView]
+			(
+				[packetID] ASC
+			)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]";
+
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+
+    sql = @"
+			CREATE NONCLUSTERED INDEX [IX_NonClusteredIndex_Collector] ON [dbo].[PacketsView]
+			(
+				[Collector] ASC
+			)
+			INCLUDE([Timestamp]) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, FILLFACTOR = 90, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]";
+
+    command!.CommandText = sql;
+    command.ExecuteNonQuery();
+    logger.Information("Created PacketsView");
   }
 }
