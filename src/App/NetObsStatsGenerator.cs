@@ -351,7 +351,7 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
   {
     using var command = conn.CreateCommand();
 
-    string sql = @"IF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ProtocolTypes') SELECT 1 ELSE SELECT 0";
+    string sql = @"IF EXISTS(SELECT * FROM SYS.VIEWS WHERE NAME = 'PacketsView') SELECT 1 ELSE SELECT 0";
 
     command!.CommandText = sql;
     command.ExecuteNonQuery();
@@ -361,7 +361,7 @@ public class NetObsStatsGenerator : IConsumer<EventMetaDataMessage>
 			CREATE VIEW [dbo].[PacketsView] WITH SCHEMABINDING AS
 				SELECT I.packetID, M.collectorName as Collector, I.timestamp, I.ipPacketSize, I.sourceIP, I.destinationIP, I.typeOfService, I.protocol, I.sourcePort, I.destinationPort, I.julianDay
 				FROM [dbo].PacketIndices I, [dbo].PcapMetaData M
-				WHERE I.pcapFileProcessingLogID = M.pcapFileProcessingLogID";
+				WHERE I.pcapFileProcessingLogID = M.pcapFileProcessingLogID AND (I.sourceIP NOT LIKE '%:%' OR I.destinationIP NOT LIKE '%:%')";
 
     command!.CommandText = sql;
     command.ExecuteNonQuery();

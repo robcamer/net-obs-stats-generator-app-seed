@@ -31,7 +31,12 @@ Below are snippets of the database records created.
 
 ![PacketsView](./docs/packets-view.png)
 
-![ReportIntervals](./docs/report-intervals.png)
+### Packets View
+
+The packets view is used for multiple statistics in the Grafana charts.
+One thing to note is that IPv6 addresses are ignored in the view. If you want to include the IPv6 entries then you will have to have a mechanism to support sorting on those ips if not, the Grafana charts will break. 
+
+One option for supporting IPV6 entries is to convert both the IPv4 and IPv6 to its decimal equivalent and using that number to sort. But with this approach if you're planing to store the decimal number, for IPv6 it has to support 128 bit number. So the appropriate data type must be used. 
 
 ## Application Development
 
