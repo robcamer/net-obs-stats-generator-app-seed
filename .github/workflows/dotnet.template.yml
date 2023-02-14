@@ -64,7 +64,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            GITHUB_PACKAGE_REGISTRY_USERNAME=${{ github.repository_owner }}
-            GITHUB_PACKAGE_REGISTRY_PASSWORD=${{ secrets.GITHUB_TOKEN }}
+            GITHUB_PACKAGE_REGISTRY_USERNAME=${{ env.GITHUB_PACKAGE_REGISTRY_USERNAME }}
+            GITHUB_PACKAGE_REGISTRY_PASSWORD=${{ env.GITHUB_PACKAGE_REGISTRY_PASSWORD }}
             NUGET_PLATFORM_URL=${{ env.NUGET_PLATFORM_URL }}
             NUGET_SOURCE_URL=${{ env.NUGET_SOURCE_URL }}
